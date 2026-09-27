@@ -280,6 +280,8 @@ export class TimetableService {
         storedFileName: true,
         version: true,
         fileHash: true,
+        fileUrl: true,
+        storageProvider: true,
       },
     });
 

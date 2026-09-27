@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, FileText, Download, Trash2, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, FileText, Download, Trash2, Search, Cloud, ExternalLink } from 'lucide-react';
 import { materialApi, courseApi } from '../services/endpoints';
 import type { Material, Course } from '../types';
 import { LoadingState, ErrorState, EmptyState, PageHeader } from '../components/ui/index';
@@ -145,6 +145,16 @@ export function MaterialsPage() {
                   <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
                     v{m.version}
                   </span>
+                  {(m.storageProvider === 'r2' || m.storageProvider === 'cloudflare_r2') && (
+                    <span className="text-[10px] text-sky-700 bg-sky-50 border border-sky-200/60 px-1.5 py-0.5 rounded font-medium flex items-center gap-1 flex-shrink-0" title="Stored in Cloudflare R2 Object Storage">
+                      <Cloud className="w-3 h-3" /> Cloudflare R2
+                    </span>
+                  )}
+                  {m.storageProvider === 'cloudinary' && (
+                    <span className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200/60 px-1.5 py-0.5 rounded font-medium flex items-center gap-1 flex-shrink-0" title="Stored in Cloudinary Cloud">
+                      <Cloud className="w-3 h-3" /> Cloudinary
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
                   <span className="font-mono font-medium text-brand-600">{m.course?.courseCode}</span>
@@ -161,6 +171,18 @@ export function MaterialsPage() {
               </div>
 
               <div className="flex items-center gap-1 flex-shrink-0">
+                {m.fileUrl && (
+                  <a
+                    href={m.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-ghost py-1.5 px-2 text-slate-500 hover:text-brand-600 hover:bg-slate-100"
+                    title="Open Cloud URL directly"
+                    aria-label={`Open direct cloud URL for ${m.title}`}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
                 <button
                   className="btn-ghost py-1.5 px-2 text-brand-600 hover:bg-brand-50"
                   onClick={() => handleDownload(m)}

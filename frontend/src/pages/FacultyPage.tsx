@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, Search, MoreVertical, UserCheck, UserX, Edit, CreditCard } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Search, UserCheck, UserX, Edit } from 'lucide-react';
 import { facultyApi } from '../services/endpoints';
 import type { Faculty } from '../types';
 import {

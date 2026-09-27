@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, File, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '../../utils/cn';

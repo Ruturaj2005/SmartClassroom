@@ -4,6 +4,7 @@ import { createError } from '../middleware/errorHandler';
 import { storageService } from './storage';
 import { calculateSHA256, generateSafeFilename, sanitizePathSegment } from '../utils/fileUtils';
 import { logger } from '../utils/logger';
+import { config } from '../config/config';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -112,10 +113,16 @@ export class MaterialService {
       storedFileName
     );
 
-    // 7. Save file to storage
-    await storageService.saveFile(input.file.buffer, relativePath);
+    // 7. Save file to storage (local, Cloudflare R2, or Cloudinary)
+    await storageService.saveFile(input.file.buffer, relativePath, input.file.mimetype);
 
-    // 8. Save metadata to database
+    // 8. Obtain direct cloud URL if available
+    const fileUrl = typeof storageService.getFileUrl === 'function'
+      ? await storageService.getFileUrl(relativePath)
+      : null;
+    const storageProvider = (config.storage.provider || 'local').toLowerCase();
+
+    // 9. Save metadata to database
     const material = await prisma.material.create({
       data: {
         courseId: input.courseId,
@@ -124,6 +131,8 @@ export class MaterialService {
         originalFileName: input.file.originalname,
         storedFileName,
         relativePath,
+        fileUrl: fileUrl || null,
+        storageProvider,
         mimeType: input.file.mimetype,
         fileSize: input.file.size,
         version,
@@ -142,6 +151,8 @@ export class MaterialService {
       version,
       fileHash,
       size: input.file.size,
+      storageProvider,
+      hasCloudUrl: !!fileUrl,
     });
 
     return material;
@@ -155,10 +166,10 @@ export class MaterialService {
 
     const fileExists = await storageService.fileExists(material.relativePath);
     if (!fileExists) {
-      throw createError(404, 'FILE_NOT_FOUND', 'Physical file not found on server');
+      throw createError(404, 'FILE_NOT_FOUND', 'Physical file not found in storage');
     }
 
-    const stream = storageService.getReadStream(material.relativePath);
+    const stream = await storageService.getReadStream(material.relativePath);
     return { stream, material };
   }
 

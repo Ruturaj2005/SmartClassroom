@@ -45,6 +45,12 @@ export const downloadMaterial = async (req: Request, res: Response, next: NextFu
   try {
     const { stream, material } = await materialService.download(req.params.id);
 
+    // If client requested direct redirect and cloud URL exists, redirect directly
+    if (req.query.redirect === 'true' && material.fileUrl) {
+      res.redirect(material.fileUrl);
+      return;
+    }
+
     res.setHeader('Content-Type', material.mimeType);
     res.setHeader(
       'Content-Disposition',
@@ -53,6 +59,9 @@ export const downloadMaterial = async (req: Request, res: Response, next: NextFu
     res.setHeader('Content-Length', material.fileSize);
     res.setHeader('X-File-Hash', material.fileHash);
     res.setHeader('X-File-Version', material.version);
+    if (material.fileUrl) {
+      res.setHeader('X-Cloud-Url', material.fileUrl);
+    }
 
     stream.pipe(res);
   } catch (err) { next(err); }
