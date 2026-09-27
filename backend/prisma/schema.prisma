@@ -251,6 +251,8 @@ model Material {
   originalFileName String
   storedFileName   String
   relativePath     String
+  fileUrl          String?
+  storageProvider  String   @default("local")
   mimeType         String
   fileSize         Int
   version          Int      @default(1)

@@ -145,6 +145,8 @@ export interface Material {
   originalFileName: string;
   storedFileName: string;
   relativePath: string;
+  fileUrl?: string | null;
+  storageProvider?: string;
   mimeType: string;
   fileSize: number;
   version: number;
@@ -226,6 +228,8 @@ export interface EdgeAuthResult {
     fileName: string;
     version: number;
     hash: string;
+    fileUrl?: string | null;
+    storageProvider?: string;
   } | null;
   message?: string;
 }
@@ -233,6 +237,6 @@ export interface EdgeAuthResult {
 export interface CurrentLectureResult {
   active: boolean;
   slot?: TimetableSlot & {
-    latestMaterial?: Pick<Material, 'id' | 'title' | 'storedFileName' | 'version' | 'fileHash'> | null;
+    latestMaterial?: Pick<Material, 'id' | 'title' | 'storedFileName' | 'version' | 'fileHash' | 'fileUrl' | 'storageProvider'> | null;
   };
 }

@@ -29,8 +29,22 @@ export const config = {
   },
 
   storage: {
+    provider: (process.env.STORAGE_PROVIDER || 'local').toLowerCase(),
     uploadDir: path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads'),
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800', 10), // 50MB default
+    r2: {
+      accountId: process.env.R2_ACCOUNT_ID || '',
+      accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+      bucketName: process.env.R2_BUCKET_NAME || 'smartclass-materials',
+      publicUrl: process.env.R2_PUBLIC_URL || '',
+    },
+    cloudinary: {
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+      apiKey: process.env.CLOUDINARY_API_KEY || '',
+      apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+      folder: process.env.CLOUDINARY_FOLDER || 'smartclass/materials',
+    },
   },
 
   logging: {

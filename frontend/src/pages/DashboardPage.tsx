@@ -3,7 +3,7 @@ import { Users, CreditCard, BookOpen, Building2, FileText, Clock, Calendar } fro
 import { facultyApi, timetableApi, materialApi, sessionApi } from '../services/endpoints';
 import type { DashboardStats, TimetableSlot, Material, LectureSession } from '../types';
 import { LoadingState, ErrorState, EmptyState, PageHeader } from '../components/ui/index';
-import { formatTime, getDayAbbr, getMimeTypeLabel, getRelativeTime, formatDate } from '../utils/cn';
+import { formatTime, getMimeTypeLabel, getRelativeTime, formatDate } from '../utils/cn';
 
 function StatCard({
   icon: Icon,

@@ -411,6 +411,7 @@ describe('MaterialService', () => {
         fileExists: vi.fn().mockResolvedValue(true),
         getReadStream: vi.fn(),
         getAbsolutePath: vi.fn(),
+        getFileUrl: vi.fn().mockResolvedValue('https://storage.example.com/path/to/file'),
       },
     }));
 

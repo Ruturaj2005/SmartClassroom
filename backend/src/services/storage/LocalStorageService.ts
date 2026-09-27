@@ -36,7 +36,7 @@ export class LocalStorageService implements StorageService {
     return resolved;
   }
 
-  async saveFile(buffer: Buffer, relativePath: string): Promise<string> {
+  async saveFile(buffer: Buffer, relativePath: string, _mimeType?: string): Promise<string> {
     const absolutePath = this.resolvePath(relativePath);
     const dir = path.dirname(absolutePath);
 
@@ -84,5 +84,10 @@ export class LocalStorageService implements StorageService {
 
   getAbsolutePath(relativePath: string): string | null {
     return this.resolvePath(relativePath);
+  }
+
+  async getFileUrl(_relativePath: string): Promise<string> {
+    // For local filesystem storage, return empty string so clients use the backend download API
+    return '';
   }
 }

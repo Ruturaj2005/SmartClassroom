@@ -11,9 +11,10 @@ export interface StorageService {
    * Save a file buffer to storage.
    * @param buffer - File content
    * @param relativePath - Path relative to storage root (e.g., "courses/IOT301/2026/file.pdf")
+   * @param mimeType - Optional MIME type of the file
    * @returns The relative path of the saved file
    */
-  saveFile(buffer: Buffer, relativePath: string): Promise<string>;
+  saveFile(buffer: Buffer, relativePath: string, mimeType?: string): Promise<string>;
 
   /**
    * Delete a file from storage.
@@ -24,9 +25,9 @@ export interface StorageService {
   /**
    * Get a readable stream for a file.
    * @param relativePath - Path relative to storage root
-   * @returns Readable stream
+   * @returns Readable stream (or Promise resolving to Readable stream)
    */
-  getReadStream(relativePath: string): Readable;
+  getReadStream(relativePath: string): Promise<Readable> | Readable;
 
   /**
    * Check if a file exists in storage.
@@ -39,4 +40,10 @@ export interface StorageService {
    * Returns null for cloud storage implementations.
    */
   getAbsolutePath(relativePath: string): string | null;
+
+  /**
+   * Get public or signed URL for accessing the file.
+   * @param relativePath - Path relative to storage root
+   */
+  getFileUrl(relativePath: string): Promise<string>;
 }
