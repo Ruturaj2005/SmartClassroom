@@ -20,16 +20,24 @@ import otherRoutes from './routes/index';
 
 const app = express();
 
-// ── Security headers ──────────────────────────────────────────────────────────
-app.use(helmet());
-
 // ── CORS ──────────────────────────────────────────────────────────────────────
+const corsOptions: cors.CorsOptions = {
+  origin: config.cors.allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  optionsSuccessStatus: 204,
+  maxAge: 86400,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// ── Security headers ──────────────────────────────────────────────────────────
 app.use(
-  cors({
-    origin: config.cors.frontendUrl,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
 

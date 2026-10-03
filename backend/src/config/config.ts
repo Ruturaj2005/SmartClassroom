@@ -11,6 +11,29 @@ function requireEnv(key: string): string {
   return value;
 }
 
+const parseAllowedOrigins = (): (string | RegExp)[] => {
+  const defaultOrigins = [
+    'https://smartclassroompccoe.netlify.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173',
+    'http://127.0.0.1:5173',
+  ];
+
+  const envOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',')
+        .map((origin) => origin.trim().replace(/\/+$/, ''))
+        .filter(Boolean)
+    : [];
+
+  const combined = Array.from(new Set([...defaultOrigins, ...envOrigins]));
+
+  return [
+    ...combined,
+    /^https:\/\/[a-zA-Z0-9-]+--smartclassroompccoe\.netlify\.app$/,
+  ];
+};
+
 export const config = {
   port: parseInt(process.env.PORT || '4000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -25,7 +48,8 @@ export const config = {
   },
 
   cors: {
-    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+    frontendUrl: process.env.FRONTEND_URL || 'https://smartclassroompccoe.netlify.app',
+    allowedOrigins: parseAllowedOrigins(),
   },
 
   storage: {
@@ -36,4 +60,4 @@ export const config = {
   logging: {
     level: process.env.LOG_LEVEL || 'info',
   },
-} as const;
+};
