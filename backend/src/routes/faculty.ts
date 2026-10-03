@@ -9,7 +9,7 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/stats', adminOnly, faculty.getDashboardStats);
+router.get('/stats', anyRole, faculty.getDashboardStats);
 
 /**
  * GET /faculty/names

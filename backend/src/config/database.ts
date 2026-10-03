@@ -1,18 +1,27 @@
+
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
 
+type PrismaWithEvents = PrismaClient<{
+  log: [
+    { emit: 'event'; level: 'query' },
+    { emit: 'event'; level: 'error' },
+    { emit: 'event'; level: 'warn' }
+  ];
+}>;
+
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: PrismaWithEvents | undefined;
 };
 
-export const prisma =
+export const prisma: PrismaWithEvents =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: [
       { emit: 'event', level: 'query' },
       { emit: 'event', level: 'error' },
-      { emit: 'event', level: 'warn' },
-    ],
+      { emit: 'event', level: 'warn' }
+    ]
   });
 
 if (process.env.NODE_ENV !== 'production') {
@@ -20,9 +29,15 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 prisma.$on('error', (e) => {
-  logger.error('Prisma error', { message: e.message, target: e.target });
+  logger.error('Prisma error', {
+    message: e.message,
+    target: e.target
+  });
 });
 
 prisma.$on('warn', (e) => {
-  logger.warn('Prisma warning', { message: e.message, target: e.target });
+  logger.warn('Prisma warning', {
+    message: e.message,
+    target: e.target
+  });
 });
