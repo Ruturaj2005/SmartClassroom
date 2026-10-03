@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, FileText, Download, Trash2, Search } from 'lucide-react';
 import { materialApi, courseApi } from '../services/endpoints';
 import type { Material, Course } from '../types';

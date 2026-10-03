@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { History } from 'lucide-react';
 import { sessionApi } from '../services/endpoints';
 import type { LectureSession } from '../types';
