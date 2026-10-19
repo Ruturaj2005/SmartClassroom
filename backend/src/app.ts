@@ -20,12 +20,17 @@ import otherRoutes from './routes/index';
 
 const app = express();
 
+// Behind nginx (local server) or Render's proxy, so client IPs come from X-Forwarded-For
+if (process.env.TRUST_PROXY) {
+  app.set('trust proxy', parseInt(process.env.TRUST_PROXY, 10) || 1);
+}
+
 // ── CORS ──────────────────────────────────────────────────────────────────────
 const corsOptions: cors.CorsOptions = {
   origin: config.cors.allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-Device-Key', 'X-Tap-Token'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   optionsSuccessStatus: 204,
   maxAge: 86400,

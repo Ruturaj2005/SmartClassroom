@@ -110,9 +110,15 @@ export interface EdgeDevice {
   lastSeenAt?: string;
   lastSyncAt?: string;
   softwareVersion?: string;
+  hasApiKey?: boolean;
   createdAt: string;
   updatedAt: string;
   classroom?: Classroom;
+}
+
+/** Returned once when a device is registered or its key is regenerated */
+export interface EdgeDeviceWithKey extends EdgeDevice {
+  apiKey: string;
 }
 
 // ── Timetable ─────────────────────────────────────────────────────────────────
@@ -149,6 +155,7 @@ export interface Material {
   fileSize: number;
   version: number;
   fileHash: string;
+  conversionStatus?: 'NOT_REQUIRED' | 'PENDING' | 'DONE' | 'FAILED';
   uploadedById: string;
   isActive: boolean;
   createdAt: string;
@@ -207,27 +214,34 @@ export interface ApiError {
 
 // ── Edge / RFID simulation ────────────────────────────────────────────────────
 
-export interface EdgeAuthResult {
+export interface EdgeTapMaterial {
+  id: string;
+  title: string;
+  description?: string | null;
+  course: { id: string; courseCode: string; courseName: string };
+  version: number;
+  fileHash: string;
+  originalFileName: string;
+  mimeType: string;
+  fileSize: number;
+  pdfAvailable: boolean;
+  updatedAt: string;
+  isCurrentLecture: boolean;
+}
+
+export interface EdgeTapResult {
   authenticated: boolean;
   reason?: string;
-  faculty?: { id: string; name: string; employeeId: string };
+  faculty?: { id: string; name: string; employeeId: string; department: string };
   classroom?: { id: string; name: string };
-  lecture?: {
-    sessionId: string;
+  currentLecture?: {
     courseId: string;
     courseCode: string;
     courseName: string;
     startTime: string;
     endTime: string;
   } | null;
-  material?: {
-    id: string;
-    title: string;
-    fileName: string;
-    version: number;
-    hash: string;
-  } | null;
-  message?: string;
+  materials?: EdgeTapMaterial[];
 }
 
 export interface CurrentLectureResult {

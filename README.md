@@ -4,7 +4,7 @@
 
 **Context-aware classroom teaching material delivery platform**
 
-A full-stack capstone project designed to automate lecture material delivery using faculty identity, classroom context, timetable, and (future) RFID hardware integration.
+A full-stack capstone project designed to automate lecture material delivery using faculty identity, classroom context, timetable, and RFID card taps on classroom Raspberry Pis, all hosted on a local server inside the college.
 
 </div>
 
@@ -27,7 +27,8 @@ A full-stack capstone project designed to automate lecture material delivery usi
 13. [File Storage Architecture](#13-file-storage-architecture)
 14. [Current Lecture Logic](#14-current-lecture-logic)
 15. [RFID Test Console](#15-rfid-test-console)
-16. [Future Raspberry Pi Integration](#16-future-raspberry-pi-integration)
+16. [Raspberry Pi Classroom Devices](#16-raspberry-pi-classroom-devices)
+17. [Local Server Deployment](#17-local-server-deployment)
 
 ---
 
@@ -35,21 +36,24 @@ A full-stack capstone project designed to automate lecture material delivery usi
 
 SmartClass automates the process of delivering the right teaching material to the right classroom at the right time.
 
-**Current software-only workflow:**
+**Setup (website on the local server):**
 
 ```
-Admin registers faculty → Assigns RFID UID → Creates courses →
-Configures classrooms → Sets up timetable → Faculty uploads materials →
-System is ready for edge device integration
+Admin registers faculty → Assigns RFID card → Registers classroom Pi (gets a device key) →
+Faculty logs in and uploads PPT/PPTX/PDF → server converts presentations to PDF
 ```
 
-**Future hardware workflow (Raspberry Pi + PN532):**
+**In the classroom (Raspberry Pi + PN532):**
 
 ```
-Faculty taps RFID card → PN532 reads UID → Raspberry Pi sends to API →
-Backend identifies faculty + classroom + current lecture →
-Returns correct material → Pi opens/downloads presentation
+Faculty taps RFID card → Pi sends UID to the local server →
+Server returns ONLY that faculty's materials → faculty picks one on screen →
+Pi opens it full screen (from its cache if unchanged) → session is logged →
+tap again to log out
 ```
+
+Everything (database, uploaded files, website) runs on one PC on the college network.
+No cloud service is needed.
 
 ---
 
@@ -321,8 +325,12 @@ http://localhost:4000/api/v1
 | GET | `/timetable/current` | Current active lecture |
 | POST | `/materials/upload` | Upload material (multipart) |
 | GET | `/materials/:id/download` | Secure file download |
-| POST | `/edge/authenticate` | RFID auth (Pi endpoint) |
-| GET | `/edge/sync` | Material sync for Pi |
+| POST | `/devices/:id/api-key` | Issue a new device key (admin) |
+| POST | `/edge/tap` | Card tap from a Pi (`X-Device-Key`) |
+| GET | `/edge/materials/:id/file` | Download for the Pi (`X-Device-Key` + `X-Tap-Token`) |
+| POST | `/edge/materials/:id/open` | Log a lecture session |
+| POST | `/edge/logout` | Close the faculty's sessions on this Pi |
+| POST | `/edge/simulate-tap` | RFID Test Console (admin) |
 
 ---
 
@@ -402,8 +410,8 @@ getCurrentLecture({ classroomId?, facultyId?, now? })
 This function is **pure and reusable**, used by:
 - Dashboard "Today" panel
 - `GET /timetable/current` endpoint
-- `GET /edge/current-lecture` (Raspberry Pi)
-- `POST /edge/authenticate` (full RFID flow)
+- `GET /edge/current-lecture`
+- `POST /edge/tap` (marks the materials for the lecture scheduled right now with "NOW")
 
 ---
 
@@ -415,58 +423,71 @@ It allows you to:
 1. Enter any RFID UID (or click quick-fill for seeded UIDs)
 2. Specify a device code
 3. Click "Simulate Card Tap"
-4. See the full authentication response:
-   - Faculty identity
-   - Classroom context
-   - Current active lecture (if any)
-   - Required teaching material + hash
-   - Session created
+4. See exactly what the classroom screen would show:
+   - Faculty identity and classroom
+   - The lecture scheduled right now (if any)
+   - That faculty's materials, and whether each has a PDF ready
 
-This tests the **entire business workflow** before hardware arrives.
+It runs the same code as a real tap, but no session is logged and no tap token is returned.
 
 ---
 
-## 16. Future Raspberry Pi Integration
+## 16. Raspberry Pi Classroom Devices
 
-### What needs to be implemented (hardware side)
+The kiosk app for the Pi is in [`edge-client/`](edge-client/). See its README for wiring and setup.
 
-```python
-# Raspberry Pi + PN532 pseudocode
-import PN532
-import requests
+### How a tap works
 
-nfc = PN532(spi_bus=0)
-DEVICE_CODE = "PI-C302"
-API_URL = "https://smartclass.uni.edu/api/v1"
+1. The PN532 reads the card UID, e.g. `04:A1:B2:C3:D4`.
+2. The Pi calls `POST /edge/tap {uid}` with its `X-Device-Key` header.
+3. The server finds the faculty member who owns the card and returns **only materials that faculty uploaded**
+   (latest version of each), plus a tap token that expires after 3 hours.
+4. The faculty member picks a material. The Pi checks its cache (`materialId + version + SHA-256`).
+   If the file isn't cached, it downloads it from `GET /edge/materials/:id/file` (the PDF when available).
+5. The Pi opens the file full screen and calls `POST /edge/materials/:id/open`, which logs a lecture session.
+6. Tapping the same card again, pressing **Log out**, or 15 idle minutes logs the faculty out.
 
-uid = nfc.read_card()  # Wait for RFID tap
+### Security
 
-response = requests.post(f"{API_URL}/edge/authenticate", json={
-    "uid": format_uid(uid),
-    "deviceCode": DEVICE_CODE
-})
+- Each Pi has its own key. Only its SHA-256 hash is stored, and the key is shown once.
+  If a Pi is stolen, issue a new key from **Edge Devices**.
+- A tap token works only on the Pi that issued it, only for that faculty's files, and stops working
+  as soon as the card is marked LOST or INACTIVE.
+- Tap tokens can't be used to log in to the website.
 
-data = response.json()["data"]
+### PowerPoint → PDF
 
-if data["authenticated"] and data["lecture"]:
-    material = data["material"]
-    local_file = check_local_cache(material["id"], material["hash"])
+PPT/PPTX uploads are converted to PDF in the background with headless LibreOffice (installed in the
+backend Docker image). PDFs open quickly and look the same on the Pi. If conversion fails, the Pi opens the
+original file with LibreOffice Impress instead. The Materials page shows the conversion status.
 
-    if not local_file:
-        # Download from server
-        download_material(material["id"], local_path)
+### Offline behaviour
 
-    open_presentation(local_file)
+If the server is unreachable, a faculty member who has tapped on that Pi before still sees the lectures
+already saved on the Pi, and can present them.
+
+---
+
+## 17. Local Server Deployment
+
+Runs PostgreSQL, the API (with LibreOffice), and the website behind nginx on one PC.
+Requires Docker Desktop (Windows) or Docker Engine (Linux).
+
+```bash
+cp .env.server.example .env          # set POSTGRES_PASSWORD and JWT_SECRET
+docker compose up -d --build
+docker compose exec backend npm run seed   # optional demo data; prints the PI-C302 device key
 ```
 
-### Backend API is already ready:
-- `POST /api/v1/edge/authenticate` — receives UID + device code
-- `GET /api/v1/edge/current-lecture` — get active lecture for classroom
-- `GET /api/v1/edge/sync` — get all material metadata for pre-caching
-- `GET /api/v1/materials/:id/download` — authenticated file download
-- Response includes `fileHash` for cache validation
-
-### No backend changes required for basic Pi integration.
+- Website: `http://<server-LAN-IP>/` (find the IP with `ipconfig`). Give the PC a fixed IP or a DHCP
+  reservation so the Pis can always find it.
+- On Windows, allow inbound TCP port 80 in Windows Defender Firewall for the Private network.
+- Uploaded files live in the `uploads` Docker volume and the database in `pgdata`. Back up both:
+  ```bash
+  docker compose exec db pg_dump -U smartclass smartclass > backup.sql
+  docker run --rm -v smartclass_uploads:/data -v "$PWD":/out alpine tar czf /out/uploads.tgz -C /data .
+  ```
+- Update after pulling new code: `docker compose up -d --build` (migrations run automatically).
 
 ---
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as edge from '../controllers/edgeController';
 import { authenticate } from '../middleware/authenticate';
 import { adminOnly, anyRole } from '../middleware/authorize';
+import { authenticateDevice, requireTap } from '../middleware/authenticateDevice';
 
 const router = Router();
 
@@ -15,12 +16,17 @@ router.patch('/sessions/:id/end', authenticate, anyRole, edge.endSession);
 router.get('/devices', authenticate, adminOnly, edge.listDevices);
 router.post('/devices', authenticate, adminOnly, edge.createDevice);
 router.put('/devices/:id', authenticate, adminOnly, edge.updateDevice);
+router.post('/devices/:id/api-key', authenticate, adminOnly, edge.regenerateDeviceKey);
 
-// ── Future Raspberry Pi endpoints ─────────────────────────────────────────────
-// NOTE: In future, these will use device-level API tokens instead of JWT.
-// For now, they accept JWT to allow software testing.
-router.post('/edge/authenticate', edge.edgeAuthenticate); // No auth - called by Pi
+// ── Raspberry Pi classroom devices (X-Device-Key header) ─────────────────────
+router.get('/edge/me', authenticateDevice, edge.edgeWhoAmI);
+router.post('/edge/tap', authenticateDevice, edge.edgeTap);
+router.get('/edge/materials/:id/file', authenticateDevice, requireTap, edge.edgeMaterialFile);
+router.post('/edge/materials/:id/open', authenticateDevice, requireTap, edge.edgeOpenMaterial);
+router.post('/edge/logout', authenticateDevice, requireTap, edge.edgeLogout);
+
+// ── Admin tools ───────────────────────────────────────────────────────────────
+router.post('/edge/simulate-tap', authenticate, adminOnly, edge.edgeSimulateTap);
 router.get('/edge/current-lecture', authenticate, anyRole, edge.edgeCurrentLecture);
-router.get('/edge/sync', edge.edgeSync); // Will use device token later
 
 export default router;
