@@ -455,13 +455,32 @@ class Kiosk:
     def _launch_viewer(self, path: Path):
         self._close_viewer()
         template = self.cfg.pdf_viewer if path.suffix == ".pdf" else self.cfg.pptx_viewer
-        cmd = [part.replace("{file}", str(path)) for part in shlex.split(template)]
-        log.info("Opening %s", cmd)
+        if template.strip().lower() != "system":
+            cmd = [part.replace("{file}", str(path)) for part in shlex.split(template)]
+            log.info("Opening %s", cmd)
+            try:
+                self.viewer = subprocess.Popen(cmd)
+                self._set_status("Presentation opened. Close it to come back here.")
+                return
+            except FileNotFoundError:
+                if sys.platform != "win32":
+                    self._set_status(f"Viewer not installed: {cmd[0]}", error=True)
+                    return
+                log.info("%s not installed, using the default Windows app", cmd[0])
+        self._open_with_system_app(path)
+
+    def _open_with_system_app(self, path: Path):
+        """Testing on a PC: open with whatever app the OS uses for this file type."""
+        log.info("Opening %s with the default app", path)
         try:
-            self.viewer = subprocess.Popen(cmd)
-            self._set_status("Presentation opened. Close it to come back here.")
-        except FileNotFoundError:
-            self._set_status(f"Viewer not installed: {cmd[0]}", error=True)
+            if sys.platform == "win32":
+                os.startfile(path)
+            else:
+                subprocess.Popen(["xdg-open", str(path)])
+            # The kiosk can't track or close an app the OS launched for it
+            self._set_status("Opened in the default app.")
+        except OSError as e:
+            self._set_status(f"Could not open the file: {e}", error=True)
 
     def _set_status(self, text, error=False):
         # The list screen may have been replaced (logout, new tap) while work ran
