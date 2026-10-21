@@ -25,6 +25,12 @@ export function authenticate(
   try {
     const payload = jwt.verify(token, config.jwt.secret) as JwtPayload;
 
+    // Classroom tap tokens are signed with the same secret but are not user sessions
+    if (payload.typ) {
+      sendError(res, 401, 'INVALID_TOKEN', 'Invalid authentication token');
+      return;
+    }
+
     req.user = {
       id: payload.sub,
       email: payload.email,

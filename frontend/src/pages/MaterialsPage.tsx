@@ -154,6 +154,13 @@ export function MaterialsPage() {
                   <span>By {m.uploadedBy?.faculty?.name || m.uploadedBy?.email}</span>
                   <span>·</span>
                   <span>{formatDate(m.updatedAt)}</span>
+                  {m.conversionStatus === 'PENDING' && <span className="text-amber-600">· Converting to PDF…</span>}
+                  {m.conversionStatus === 'DONE' && <span className="text-emerald-600">· Classroom PDF ready</span>}
+                  {m.conversionStatus === 'FAILED' && (
+                    <span className="text-red-500" title="The classroom device will open the original PowerPoint file instead">
+                      · PDF conversion failed
+                    </span>
+                  )}
                 </div>
                 <div className="font-mono text-[9px] text-slate-300 mt-0.5 truncate" title="SHA-256 hash">
                   SHA256: {m.fileHash.substring(0, 16)}...

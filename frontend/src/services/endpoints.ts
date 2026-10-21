@@ -2,7 +2,7 @@ import api from './api';
 import type {
   AuthUser, Faculty, RFIDCard, Course, CourseAssignment, Classroom,
   EdgeDevice, TimetableSlot, Material, LectureSession, DashboardStats,
-  EdgeAuthResult, CurrentLectureResult, ApiResponse,
+  EdgeTapResult, EdgeDeviceWithKey, CurrentLectureResult, ApiResponse,
 } from '../types';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -127,19 +127,18 @@ export const sessionApi = {
 export const deviceApi = {
   list: () => api.get<ApiResponse<EdgeDevice[]>>('/devices'),
   create: (data: { deviceCode: string; classroomId: string; softwareVersion?: string }) =>
-    api.post<ApiResponse<EdgeDevice>>('/devices', data),
+    api.post<ApiResponse<EdgeDeviceWithKey>>('/devices', data),
+  regenerateKey: (id: string) => api.post<ApiResponse<EdgeDeviceWithKey>>(`/devices/${id}/api-key`),
   update: (id: string, data: Partial<EdgeDevice>) => api.put<ApiResponse<EdgeDevice>>(`/devices/${id}`, data),
 };
 
 // ── Edge (RFID Test Console) ──────────────────────────────────────────────────
 
 export const edgeApi = {
-  authenticate: (uid: string, deviceCode: string) =>
-    api.post<ApiResponse<EdgeAuthResult>>('/edge/authenticate', { uid, deviceCode }),
+  simulateTap: (uid: string, deviceCode: string) =>
+    api.post<ApiResponse<EdgeTapResult>>('/edge/simulate-tap', { uid, deviceCode }),
   currentLecture: (classroomId?: string, facultyId?: string) =>
     api.get<ApiResponse<CurrentLectureResult>>('/edge/current-lecture', {
       params: { classroomId, facultyId },
     }),
-  sync: (deviceCode: string) =>
-    api.get<ApiResponse<unknown>>('/edge/sync', { params: { deviceCode } }),
 };

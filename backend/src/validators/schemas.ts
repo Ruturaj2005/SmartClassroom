@@ -118,6 +118,14 @@ export const edgeAuthSchema = z.object({
   deviceCode: z.string().min(1, 'Device code is required'),
 });
 
+export const edgeTapSchema = z.object({
+  uid: rfidUidSchema,
+});
+
+export const edgeOpenSchema = z.object({
+  retrievalMode: z.enum(['CACHE', 'SERVER', 'OFFLINE']).default('SERVER'),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateFacultyInput = z.infer<typeof updateFacultySchema>;
@@ -130,3 +138,4 @@ export type MaterialMetadataInput = z.infer<typeof materialMetadataSchema>;
 export type EdgeDeviceInput = z.infer<typeof edgeDeviceSchema>;
 export type SessionInput = z.infer<typeof sessionSchema>;
 export type EdgeAuthInput = z.infer<typeof edgeAuthSchema>;
+export type EdgeTapInput = z.infer<typeof edgeTapSchema>;

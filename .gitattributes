@@ -22,3 +22,9 @@
 *.gif  binary
 *.ico  binary
 *.pdf  binary
+
+# Files run on Linux (Raspberry Pi, Docker) must keep LF line endings
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.conf text eol=lf
+edge-client/** text eol=lf

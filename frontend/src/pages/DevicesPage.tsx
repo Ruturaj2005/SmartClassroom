@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Monitor } from 'lucide-react';
+import { Plus, Monitor, KeyRound, Copy, Check } from 'lucide-react';
 import { deviceApi, classroomApi } from '../services/endpoints';
-import type { EdgeDevice, Classroom } from '../types';
+import type { EdgeDevice, EdgeDeviceWithKey, Classroom } from '../types';
 import { LoadingState, ErrorState, EmptyState, StatusBadge, PageHeader } from '../components/ui/index';
 import { Modal } from '../components/ui/Dialog';
 import { Spinner } from '../components/ui/index';
@@ -16,6 +16,8 @@ export function DevicesPage() {
   const [form, setForm] = useState({ deviceCode: '', classroomId: '', softwareVersion: '' });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [issuedKey, setIssuedKey] = useState<EdgeDeviceWithKey | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = async () => {
     try {
@@ -40,18 +42,45 @@ export function DevicesPage() {
     setSubmitting(true);
     setFormError('');
     try {
-      await deviceApi.create({
+      const res = await deviceApi.create({
         deviceCode: form.deviceCode.toUpperCase(),
         classroomId: form.classroomId,
         softwareVersion: form.softwareVersion || undefined,
       });
       await load();
       setShowCreate(false);
+      showKey(res.data.data);
       setForm({ deviceCode: '', classroomId: '', softwareVersion: '' });
     } catch (err: any) {
       setFormError(err.response?.data?.error?.message || 'Failed to register device');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const showKey = (device: EdgeDeviceWithKey) => {
+    setCopied(false);
+    setIssuedKey(device);
+  };
+
+  const handleRegenerate = async (device: EdgeDevice) => {
+    if (!window.confirm(`Issue a new key for ${device.deviceCode}? The Pi will stop working until you update its config.`)) return;
+    try {
+      const res = await deviceApi.regenerateKey(device.id);
+      await load();
+      showKey(res.data.data);
+    } catch (err: any) {
+      window.alert(err.response?.data?.error?.message || 'Failed to issue a new key');
+    }
+  };
+
+  const copyKey = async () => {
+    if (!issuedKey) return;
+    try {
+      await navigator.clipboard.writeText(issuedKey.apiKey);
+      setCopied(true);
+    } catch {
+      // Clipboard API is blocked on plain-http LAN addresses; the key is still selectable
     }
   };
 
@@ -62,7 +91,7 @@ export function DevicesPage() {
     <div className="animate-fade-in">
       <PageHeader
         title="Edge Devices"
-        subtitle="Raspberry Pi classroom devices (future integration)"
+        subtitle="Raspberry Pi RFID readers installed in classrooms"
         action={
           <button className="btn-primary" onClick={() => setShowCreate(true)} id="add-device-btn">
             <Plus className="w-4 h-4" /> Register Device
@@ -70,10 +99,9 @@ export function DevicesPage() {
         }
       />
 
-      <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 mb-5">
-        <strong>🔧 Hardware Integration Pending:</strong> Raspberry Pi + PN532 devices are not yet connected.
-        Devices registered here will be used when the hardware is installed.
-        The backend API (<code>/api/v1/edge/*</code>) is fully ready.
+      <div className="bg-sky-50 border border-sky-200 rounded-xl px-4 py-3 text-sm text-sky-800 mb-5">
+        Each Raspberry Pi signs in with its own <strong>device key</strong>. The key is shown only once, when
+        the device is registered or a new key is issued. Put it in the Pi's <code>config.ini</code>.
       </div>
 
       {devices.length === 0 ? (
@@ -93,7 +121,8 @@ export function DevicesPage() {
                 <th>Status</th>
                 <th>Version</th>
                 <th>Last Seen</th>
-                <th>Last Sync</th>
+                <th>Key</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -104,7 +133,14 @@ export function DevicesPage() {
                   <td><StatusBadge status={d.status} /></td>
                   <td className="text-slate-500 text-sm">{d.softwareVersion ?? '—'}</td>
                   <td className="text-slate-500 text-sm">{d.lastSeenAt ? formatDate(d.lastSeenAt, true) : 'Never'}</td>
-                  <td className="text-slate-500 text-sm">{d.lastSyncAt ? formatDate(d.lastSyncAt, true) : 'Never'}</td>
+                  <td className="text-sm">
+                    {d.hasApiKey ? <span className="text-emerald-600">Issued</span> : <span className="text-amber-600">Missing</span>}
+                  </td>
+                  <td className="text-right">
+                    <button className="btn-secondary text-xs" onClick={() => handleRegenerate(d)}>
+                      <KeyRound className="w-3.5 h-3.5" /> New key
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -141,6 +177,24 @@ export function DevicesPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={!!issuedKey} onClose={() => setIssuedKey(null)} title={`Device key for ${issuedKey?.deviceCode ?? ''}`}>
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Copy this key into the Pi's <code>config.ini</code> as <code>device_key</code>.
+            It will <strong>not be shown again</strong>. If it's lost, issue a new key.
+          </p>
+          <div className="flex items-center gap-2">
+            <input readOnly className="input font-mono text-xs" value={issuedKey?.apiKey ?? ''} onFocus={(e) => e.target.select()} />
+            <button type="button" className="btn-secondary" onClick={copyKey} aria-label="Copy key">
+              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
+          <div className="flex justify-end">
+            <button className="btn-primary" onClick={() => setIssuedKey(null)}>Done</button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

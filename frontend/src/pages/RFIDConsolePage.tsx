@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Wifi, Send, CheckCircle, XCircle, Clock, BookOpen, FileText, User, Building2 } from 'lucide-react';
 import { edgeApi } from '../services/endpoints';
-import type { EdgeAuthResult } from '../types';
+import type { EdgeTapResult } from '../types';
 import { PageHeader, Alert } from '../components/ui/index';
 import { Spinner } from '../components/ui/index';
 import { formatTime } from '../utils/cn';
@@ -15,7 +15,7 @@ const DEMO_UIDS = [
 ];
 
 interface ResultCardProps {
-  result: EdgeAuthResult;
+  result: EdgeTapResult;
 }
 
 function ResultCard({ result }: ResultCardProps) {
@@ -73,50 +73,61 @@ function ResultCard({ result }: ResultCardProps) {
         )}
       </div>
 
-      {/* Current Lecture */}
-      {result.lecture ? (
+      {/* Scheduled lecture (only used to sort the list) */}
+      {result.currentLecture ? (
         <div className="card p-4 border-brand-200 bg-brand-50">
-          <div className="flex items-center gap-2 mb-3 text-brand-600">
+          <div className="flex items-center gap-2 mb-2 text-brand-600">
             <BookOpen className="w-4 h-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Lecture</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Scheduled now</span>
             <span className="ml-auto text-xs badge-active px-2 py-0.5">LIVE</span>
           </div>
-          <div className="font-bold text-lg text-brand-900">{result.lecture.courseName}</div>
-          <div className="font-mono text-sm text-brand-700 mb-2">{result.lecture.courseCode}</div>
-          <div className="flex items-center gap-2 text-sm text-brand-600">
-            <Clock className="w-3.5 h-3.5" />
-            <span>{formatTime(result.lecture.startTime)} – {formatTime(result.lecture.endTime)}</span>
+          <div className="font-bold text-brand-900">
+            {result.currentLecture.courseCode} · {result.currentLecture.courseName}
           </div>
-          {result.lecture.sessionId && (
-            <div className="mt-2 text-xs text-brand-500 font-mono">
-              Session: {result.lecture.sessionId}
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-sm text-brand-600 mt-1">
+            <Clock className="w-3.5 h-3.5" />
+            <span>{formatTime(result.currentLecture.startTime)} – {formatTime(result.currentLecture.endTime)}</span>
+          </div>
         </div>
       ) : (
         <div className="card p-4 bg-slate-50">
-          <div className="flex items-center gap-2 text-slate-500">
-            <Clock className="w-4 h-4" />
-            <span className="text-sm">{result.message || 'No active lecture at this time'}</span>
+          <div className="flex items-center gap-2 text-slate-500 text-sm">
+            <Clock className="w-4 h-4" /> No lecture scheduled right now, so the full list is shown
           </div>
         </div>
       )}
 
-      {/* Material */}
-      {result.material && (
-        <div className="card p-4">
-          <div className="flex items-center gap-2 mb-3 text-slate-500">
-            <FileText className="w-4 h-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Teaching Material</span>
-          </div>
-          <div className="font-semibold text-slate-900">{result.material.title}</div>
-          <div className="text-xs text-slate-500 mt-1 space-y-0.5">
-            <div>File: <span className="font-mono">{result.material.fileName}</span></div>
-            <div>Version: <span className="font-mono">v{result.material.version}</span></div>
-            <div className="text-[10px] text-slate-300">Hash: {result.material.hash}</div>
-          </div>
+      {/* Materials the Pi would offer */}
+      <div className="card p-4">
+        <div className="flex items-center gap-2 mb-3 text-slate-500">
+          <FileText className="w-4 h-4" />
+          <span className="text-xs font-semibold uppercase tracking-wider">
+            Content shown on the classroom screen ({result.materials?.length ?? 0})
+          </span>
         </div>
-      )}
+        {result.materials && result.materials.length > 0 ? (
+          <ul className="divide-y divide-slate-100">
+            {result.materials.map((m) => (
+              <li key={m.id} className="py-2 flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-slate-900 truncate">
+                    {m.title} <span className="text-xs text-slate-400 font-mono">v{m.version}</span>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {m.course.courseCode} · {m.originalFileName}
+                  </div>
+                </div>
+                {m.isCurrentLecture && <span className="text-[10px] badge-active px-2 py-0.5">Now</span>}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${m.pdfAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                  {m.pdfAvailable ? 'PDF ready' : 'Original only'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-500">This faculty member hasn't uploaded any materials yet.</p>
+        )}
+      </div>
 
       {/* JSON response */}
       <details className="card overflow-hidden">
@@ -135,7 +146,7 @@ export function RFIDConsolePage() {
   const [uid, setUid] = useState('');
   const [deviceCode, setDeviceCode] = useState('PI-C302');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<EdgeAuthResult | null>(null);
+  const [result, setResult] = useState<EdgeTapResult | null>(null);
   const [error, setError] = useState('');
 
   const handleSimulate = async (e: React.FormEvent) => {
@@ -148,7 +159,7 @@ export function RFIDConsolePage() {
     setResult(null);
 
     try {
-      const res = await edgeApi.authenticate(uid.trim().toUpperCase(), deviceCode.trim().toUpperCase());
+      const res = await edgeApi.simulateTap(uid.trim().toUpperCase(), deviceCode.trim().toUpperCase());
       setResult(res.data.data);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Request failed');
@@ -174,10 +185,10 @@ export function RFIDConsolePage() {
       <Alert variant="warning" className="mb-5">
         <strong>🧪 Development Simulation Tool</strong>
         <br />
-        This console simulates the Raspberry Pi + PN532 RFID scan workflow.
-        Enter an RFID UID manually to test the full authentication flow:
+        This console simulates a card tap on a classroom Raspberry Pi.
+        Enter an RFID UID to see exactly what that faculty member would see on the screen:
         <br />
-        <code className="text-xs mt-1 block">UID → Faculty → Classroom → Timetable → Material</code>
+        <code className="text-xs mt-1 block">UID → Faculty → their uploaded materials</code>
       </Alert>
 
       {/* Quick-fill buttons */}
@@ -238,7 +249,7 @@ export function RFIDConsolePage() {
             {loading ? (
               <><Spinner size="sm" className="text-white" /> Authenticating...</>
             ) : (
-              <><Send className="w-4 h-4" /> Simulate Card Tap → POST /edge/authenticate</>
+              <><Send className="w-4 h-4" /> Simulate Card Tap</>
             )}
           </button>
         </form>
@@ -250,17 +261,16 @@ export function RFIDConsolePage() {
       {/* Architecture note */}
       <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
         <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          Future Raspberry Pi Integration
+          What happens on a real Raspberry Pi
         </h3>
         <ol className="text-xs text-slate-500 space-y-1 list-decimal list-inside">
-          <li>Faculty taps RFID card on PN532 reader</li>
-          <li>Raspberry Pi reads UID from PN532 via SPI/I2C</li>
-          <li>Pi sends <code>POST /api/v1/edge/authenticate {'{'} uid, deviceCode {'}'}</code></li>
-          <li>Backend identifies faculty, classroom, current lecture</li>
-          <li>Pi compares local material hash vs server hash</li>
-          <li>Pi downloads updated material if hash differs</li>
-          <li>Pi opens presentation in fullscreen</li>
-          <li>Session is logged in the database</li>
+          <li>Faculty taps their RFID card on the PN532 reader</li>
+          <li>Pi sends <code>POST /api/v1/edge/tap</code> with its device key</li>
+          <li>Server returns that faculty's materials and a short-lived tap token</li>
+          <li>Faculty picks a material on the screen</li>
+          <li>Pi uses its cached copy if the hash matches, otherwise downloads the PDF</li>
+          <li>Pi opens it full screen and the session is logged</li>
+          <li>Tapping the card again logs out</li>
         </ol>
       </div>
     </div>

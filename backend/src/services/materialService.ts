@@ -4,6 +4,7 @@ import { createError } from '../middleware/errorHandler';
 import { storageService } from './storage';
 import { calculateSHA256, generateSafeFilename, sanitizePathSegment } from '../utils/fileUtils';
 import { logger } from '../utils/logger';
+import { conversionService, needsPdfConversion } from './conversionService';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -116,6 +117,7 @@ export class MaterialService {
     await storageService.saveFile(input.file.buffer, relativePath);
 
     // 8. Save metadata to database
+    const convertToPdf = needsPdfConversion(input.file.originalname);
     const material = await prisma.material.create({
       data: {
         courseId: input.courseId,
@@ -128,6 +130,7 @@ export class MaterialService {
         fileSize: input.file.size,
         version,
         fileHash,
+        conversionStatus: convertToPdf ? 'PENDING' : 'NOT_REQUIRED',
         uploadedById: input.uploadedById,
       },
       include: {
@@ -143,6 +146,11 @@ export class MaterialService {
       fileHash,
       size: input.file.size,
     });
+
+    // 9. Convert presentations to PDF in the background (errors are logged, not thrown)
+    if (convertToPdf) {
+      void conversionService.convertMaterial(material.id, input.file.buffer, storedFileName, relativePath);
+    }
 
     return material;
   }
@@ -160,6 +168,32 @@ export class MaterialService {
 
     const stream = storageService.getReadStream(material.relativePath);
     return { stream, material };
+  }
+
+  /**
+   * Opens the file a classroom device should display: the converted PDF when
+   * requested and available, otherwise the original upload.
+   */
+  async openForDisplay(id: string, preferPdf: boolean) {
+    const material = await prisma.material.findUnique({ where: { id } });
+    if (!material || !material.isActive) {
+      throw createError(404, 'NOT_FOUND', 'Material not found');
+    }
+
+    const usePdf = preferPdf && material.conversionStatus === 'DONE' && !!material.pdfRelativePath;
+    const relativePath = usePdf ? material.pdfRelativePath! : material.relativePath;
+
+    if (!(await storageService.fileExists(relativePath))) {
+      throw createError(404, 'FILE_NOT_FOUND', 'Physical file not found on server');
+    }
+
+    return {
+      material,
+      stream: storageService.getReadStream(relativePath),
+      mimeType: usePdf ? 'application/pdf' : material.mimeType,
+      fileName: usePdf ? path.basename(relativePath) : material.storedFileName,
+      format: usePdf ? 'pdf' : 'original',
+    };
   }
 
   async deactivate(id: string, requesterId: string, requesterRole: string) {

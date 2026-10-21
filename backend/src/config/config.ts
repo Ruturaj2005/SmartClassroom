@@ -55,6 +55,13 @@ export const config = {
   storage: {
     uploadDir: path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads'),
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800', 10), // 50MB default
+    // LibreOffice binary used to convert PPT/PPTX uploads to PDF for classroom display
+    sofficePath: process.env.SOFFICE_PATH || 'soffice',
+  },
+
+  edge: {
+    // How long a card tap stays valid on the classroom device
+    tapTokenExpiresIn: process.env.EDGE_TAP_TOKEN_EXPIRES_IN || '3h',
   },
 
   logging: {

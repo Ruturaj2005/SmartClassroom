@@ -44,3 +44,8 @@ Thumbs.db
 # ── Vite cache ────────────────────────────────────────────────────────────────
 .vite/
 frontend/.vite/
+
+# ── Raspberry Pi kiosk ────────────────────────────────────────────────────────
+edge-client/config.ini
+edge-client/.venv/
+__pycache__/

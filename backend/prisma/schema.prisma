@@ -114,6 +114,7 @@ model EdgeDevice {
   lastSeenAt      DateTime?
   lastSyncAt      DateTime?
   softwareVersion String?
+  apiKeyHash      String?          @unique
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   cacheEntries    EdgeCacheEntry[]
@@ -159,6 +160,8 @@ model Material {
   fileSize         Int
   version          Int              @default(1)
   fileHash         String
+  pdfRelativePath  String?
+  conversionStatus ConversionStatus @default(NOT_REQUIRED)
   uploadedById     String
   isActive         Boolean          @default(true)
   createdAt        DateTime         @default(now())
@@ -257,4 +260,11 @@ enum DayOfWeek {
   FRIDAY
   SATURDAY
   SUNDAY
+}
+
+enum ConversionStatus {
+  NOT_REQUIRED
+  PENDING
+  DONE
+  FAILED
 }

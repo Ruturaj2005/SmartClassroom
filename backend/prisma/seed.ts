@@ -1,5 +1,6 @@
 import { PrismaClient, DayOfWeek } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { generateDeviceKey, hashDeviceKey } from '../src/utils/deviceKey';
 
 const prisma = new PrismaClient();
 
@@ -212,16 +213,19 @@ async function main() {
   console.log(`✅ ${allClassrooms.length} classrooms created`);
 
   // ── Edge devices ───────────────────────────────────────────────────────────
+  const demoDeviceKey = generateDeviceKey();
   await prisma.edgeDevice.create({
     data: {
       deviceCode: 'PI-C302',
       classroomId: classroomMap['C-302'],
       status: 'OFFLINE',
       softwareVersion: '1.0.0',
+      apiKeyHash: hashDeviceKey(demoDeviceKey),
     },
   });
 
-  console.log('✅ Edge device PI-C302 registered (offline, pending hardware)');
+  console.log('✅ Edge device PI-C302 registered');
+  console.log(`   Device key (put this in the Pi's config, shown only now): ${demoDeviceKey}`);
 
   // ── Timetable slots ─────────────────────────────────────────────────────────
   const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
